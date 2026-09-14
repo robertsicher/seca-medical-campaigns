@@ -1,0 +1,39 @@
+name: Import official campaign imagery
+on:
+  push:
+    paths: ['.github/workflows/import-media.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the verified official seca assets
+        env:
+          MEDIA_JSON: '{"seca-logo.svg":"https://www.seca.com/typo3conf/ext/seca_site/Resources/Public/Images/seca-logo-en.svg?1611161100","mbca-alpha.jpg":"https://www.seca.com/_img/zLhv-oiAQxLiy79hUBjs7F_qF_cTmrzwzKPUBTlfrD0/w:1140/h:1670/fn:csm_seca_mBCA_Alpha_hero_shot_209047e9ef/cb:22cc99136501ee8f14cbc13b962b646063dc7c24/el:1/q:89/aHR0cHM6Ly93d3cuc2VjYS5jb20vZmlsZWFkbWluL21lZGlhL2ltYWdlcy9sYW5kaW5ncGFnZXMvbWJjYV9sYW5kaW5ncGFnZS9tQkNBX0FscGhhL3NlY2FfbUJDQV9BbHBoYV9oZXJvX3Nob3QuanBn","clinical-consultation.jpg":"https://www.seca.com/_img/iJA8eWzjvVsQXsXeEf8aVrt4jA79PwYpKKwU795db4g/w:526/h:893/fn:csm_Doctor_Patient_Hero-pose_infront_of_Scale_e807bc2842/cb:6ea2faaf2a817bff60417a32ce18d059fa9fd7b4/el:1/q:89/aHR0cHM6Ly93d3cuc2VjYS5jb20vZmlsZWFkbWluL21lZGlhL2ltYWdlcy9sYW5kaW5ncGFnZXMvbWJjYV9sYW5kaW5ncGFnZS9tQkNBX0FscGhhL0RvY3Rvcl9QYXRpZW50X0hlcm8tcG9zZV9pbmZyb250X29mX1NjYWxlLmpwZw","measurement-in-practice.jpg":"https://www.seca.com/_img/NNXo46BcLlX1nFnEAkstabaUOixx9sHHGCC9x94l35I/w:1052/h:1182/fn:csm_mbca_alpha_people_couple_measurement_54a0a16b74/cb:95f78c3f438f3089cb678948474eb11e8d56fae8/el:1/q:89/c:1052.5546492659:1182.5:fp:0.49836867862969:0.3125/rt:force/aHR0cHM6Ly93d3cuc2VjYS5jb20vZmlsZWFkbWluL21lZGlhL2ltYWdlcy9sYW5kaW5ncGFnZXMvbWJjYV9sYW5kaW5ncGFnZS9tQkNBX0FscGhhL21iY2FfYWxwaGFfcGVvcGxlX2NvdXBsZV9tZWFzdXJlbWVudC5qcGc","patient-results.jpg":"https://www.seca.com/_img/LP_0uKMRKoBFWff-5JoHGeN-6S85mBBcPblyxjcOpSE/w:467/h:512/fn:csm_female_overshoulder_looking_on_myanalytics_App_on_phone_da1952e48c/cb:2a3f7306402118a1d0e591a7e81d737e9bc524af/el:1/q:89/aHR0cHM6Ly93d3cuc2VjYS5jb20vZmlsZWFkbWluL21lZGlhL2ltYWdlcy9sYW5kaW5ncGFnZXMvbWJjYV9sYW5kaW5ncGFnZS9tQkNBX0FscGhhL2ZlbWFsZV9vdmVyc2hvdWxkZXJfbG9va2luZ19vbl9teWFuYWx5dGljc19BcHBfb25fcGhvbmUuanBn","analytics-125.jpg":"https://www.seca.com/_img/aEkcYIKQ22zOYYLELHEG8vH2QxWI_FivmN3e-UFp5Pk/w:400/h:549/fn:csm_seca_analytics_125_App_on_ipad_front_en_6b7c8bae84/cb:a5b5b0021aaa9647a4778dff870e1ca634b5d18f/el:1/q:89/aHR0cHM6Ly93d3cuc2VjYS5jb20vZmlsZWFkbWluL21lZGlhL2ltYWdlcy9sYW5kaW5ncGFnZXMvbWJjYV9sYW5kaW5ncGFnZS9tQkNBX0FscGhhL3NlY2FfYW5hbHl0aWNzXzEyNV9BcHBfb25faXBhZF9mcm9udF9lbi5qcGc"}'
+        run: |
+          node --input-type=module - <<'JS'
+          import {mkdir,writeFile} from 'node:fs/promises';
+          const media=JSON.parse(process.env.MEDIA_JSON);
+          await mkdir('assets/images',{recursive:true});
+          for (const [name,url] of Object.entries(media)) {
+            const response=await fetch(url);
+            if (!response.ok) throw new Error(name+': HTTP '+response.status);
+            const type=response.headers.get('content-type');
+            if (!type?.startsWith('image/')) throw new Error(name+': not an image');
+            const data=new Uint8Array(await response.arrayBuffer());
+            await writeFile('assets/images/'+name,data);
+            console.log(name,type,data.length+' bytes');
+          }
+          JS
+      - name: Save imagery to main
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/images
+          if ! git diff --cached --quiet; then
+            git commit -m "Add official seca product and healthcare imagery"
+            git push origin HEAD:main
+          fi
