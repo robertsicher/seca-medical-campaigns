@@ -1,0 +1,25 @@
+name: Verify published campaign
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/live-check.yml'
+      - 'tests/live.test.cjs'
+  workflow_run:
+    workflows: ['Test and deploy Beyond Weight', 'pages build and deployment']
+    types: [completed]
+permissions:
+  contents: read
+jobs:
+  live:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify published pages and assets against source
+        run: node tests/live.test.cjs
