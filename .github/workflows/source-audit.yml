@@ -1,0 +1,37 @@
+name: Official source and media audit
+on:
+  push:
+    paths:
+      - '.github/workflows/source-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect official seca UK source links
+        run: |
+          python3 - <<'PY'
+          from urllib.request import urlopen, Request
+          from urllib.parse import urljoin
+          from html.parser import HTMLParser
+          pages = [
+            'https://www.seca.com/en_gb/products/body-composition-analysis/mbca/mbca-alpha.html',
+            'https://www.seca.com/en_gb/products/body-composition-analysis/analytics-125.html',
+            'https://www.seca.com/en_gb/products/body-composition-analysis/validation.html'
+          ]
+          class Links(HTMLParser):
+            def handle_starttag(self, tag, attrs):
+              attrs=dict(attrs)
+              if tag=='img':
+                print('IMAGE',attrs.get('alt',''),urljoin(self.base,attrs.get('src','')),attrs.get('data-src',''))
+              if tag=='link' and attrs.get('rel')=='stylesheet':
+                print('STYLE',urljoin(self.base,attrs.get('href','')))
+              if tag=='a' and any(t in attrs.get('href','').lower() for t in ['.pdf','study','studies']):
+                print('DOCUMENT',urljoin(self.base,attrs.get('href','')))
+          for url in pages:
+            print('PAGE',url)
+            p=Links();p.base=url
+            p.feed(urlopen(Request(url,headers={'User-Agent':'Mozilla/5.0'}),timeout=30).read().decode())
+          PY
