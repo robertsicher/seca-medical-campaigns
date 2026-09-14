@@ -1,0 +1,1 @@
+Official seca product and healthcare images used for an independent interview concept. See ../../docs/SOURCES.md for provenance and rights caveat. All customer-facing pages reference these local files with relative paths. Replace with approved images at the same names when required.
